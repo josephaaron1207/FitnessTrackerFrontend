@@ -14,7 +14,7 @@ const App = () => {
   const [workoutError, setWorkoutError] = useState('');
   const [editWorkout, setEditWorkout] = useState(null);
 
-  // 🔹 Fetch workouts
+  // Fetch workouts
   const fetchWorkouts = async () => {
     if (!authToken || !userId) return;
     setIsLoadingWorkouts(true);
@@ -45,7 +45,7 @@ const App = () => {
     fetchWorkouts();
   }, [authToken, userId]);
 
-  // 🔹 Auth success
+  // Auth success
   const handleAuthSuccess = (apiUserId, token) => {
     setUserId(apiUserId);
     setAuthToken(token);
@@ -59,7 +59,7 @@ const App = () => {
     setCurrentPage('login');
   };
 
-  // 🔹 CRUD handlers
+  // CRUD handlers
   const handleWorkoutAdded = () => fetchWorkouts();
 
   const handleDeleteWorkout = async (id) => {
@@ -70,8 +70,6 @@ const App = () => {
       });
       if (res.ok) {
         setWorkouts((prev) => prev.filter((w) => w.id !== id));
-      } else {
-        console.error('❌ Failed to delete workout');
       }
     } catch (err) {
       console.error('❌ Delete error:', err);
@@ -84,13 +82,10 @@ const App = () => {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      const data = await res.json();
       if (res.ok) {
         setWorkouts((prev) =>
           prev.map((w) => (w.id === id ? { ...w, status: 'Completed' } : w))
         );
-      } else {
-        console.error('❌ Complete failed:', data);
       }
     } catch (err) {
       console.error('❌ Complete error:', err);
@@ -112,16 +107,13 @@ const App = () => {
         setWorkouts((prev) =>
           prev.map((w) => (w.id === updatedWorkout.id ? data.updatedWorkout : w))
         );
-        setEditWorkout(null); // close modal
-      } else {
-        console.error('❌ Update failed:', data);
+        setEditWorkout(null);
       }
     } catch (err) {
       console.error('❌ Update error:', err);
     }
   };
 
-  // 🔹 Render LoginPage if unauthenticated
   if (!authToken || !userId) {
     return <LoginPage onAuthSuccess={handleAuthSuccess} />;
   }
@@ -130,7 +122,9 @@ const App = () => {
     <div className="app-container">
       <div className="app-content-wrapper">
         <div className="user-info-bar">
-          <p>Your User ID: <span>{userId}</span></p>
+          <p className="user-id-text">
+            Your User ID: <span className="font-mono break-all">{userId}</span>
+          </p>
           <button onClick={handleLogout} className="logout-button">Logout</button>
         </div>
 
@@ -170,33 +164,48 @@ const App = () => {
         {editWorkout && (
           <div className="modal-backdrop">
             <div className="modal">
-              <h3>Edit Workout</h3>
+              <h3 className="modal-heading">Edit Workout</h3>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleUpdateWorkout(editWorkout);
                 }}
+                className="form-layout"
               >
-                <input
-                  type="text"
-                  value={editWorkout.name}
-                  onChange={(e) => setEditWorkout({ ...editWorkout, name: e.target.value })}
-                />
-                <input
-                  type="text"
-                  value={editWorkout.duration}
-                  onChange={(e) => setEditWorkout({ ...editWorkout, duration: e.target.value })}
-                />
-                <select
-                  value={editWorkout.status}
-                  onChange={(e) => setEditWorkout({ ...editWorkout, status: e.target.value })}
-                >
-                  <option>Completed</option>
-                  <option>Pending</option>
-                  <option>Cancelled</option>
-                </select>
-                <button type="submit">Save</button>
-                <button type="button" onClick={() => setEditWorkout(null)}>Cancel</button>
+                <div className="form-field">
+                  <label className="form-label">Workout Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editWorkout.name}
+                    onChange={(e) => setEditWorkout({ ...editWorkout, name: e.target.value })}
+                  />
+                </div>
+                <div className="form-field">
+                  <label className="form-label">Duration</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editWorkout.duration}
+                    onChange={(e) => setEditWorkout({ ...editWorkout, duration: e.target.value })}
+                  />
+                </div>
+                <div className="form-field">
+                  <label className="form-label">Status</label>
+                  <select
+                    className="form-select"
+                    value={editWorkout.status}
+                    onChange={(e) => setEditWorkout({ ...editWorkout, status: e.target.value })}
+                  >
+                    <option>Completed</option>
+                    <option>Pending</option>
+                    <option>Cancelled</option>
+                  </select>
+                </div>
+                <div className="modal-actions">
+                  <button type="submit" className="submit-button">Save</button>
+                  <button type="button" className="cancel-button" onClick={() => setEditWorkout(null)}>Cancel</button>
+                </div>
               </form>
             </div>
           </div>
