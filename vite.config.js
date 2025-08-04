@@ -5,9 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Proxy requests starting with /api to your LOCAL backend API
+      // Proxy requests starting with /api to your deployed Render.com API
       '/api': {
-        target: 'http://localhost:4000', // <--- UPDATED THIS PORT TO 4000
+        target: 'https://fitness-tracker-tcy9.onrender.com/', // <--- UPDATED THIS LINE
         changeOrigin: true, // Needed for virtual hosted sites
         rewrite: (path) => path.replace(/^\/api/, ''), // Remove /api prefix when forwarding
       },
