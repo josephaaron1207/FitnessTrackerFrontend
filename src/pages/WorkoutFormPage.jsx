@@ -80,7 +80,6 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
           >
             <option>Completed</option>
             <option>Pending</option>
-            <option>Cancelled</option>
           </select>
         </div>
         {formError && <p className="form-error-message">{formError}</p>}

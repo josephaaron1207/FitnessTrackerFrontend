@@ -199,7 +199,6 @@ const App = () => {
                   >
                     <option>Completed</option>
                     <option>Pending</option>
-                    <option>Cancelled</option>
                   </select>
                 </div>
                 <div className="modal-actions">
