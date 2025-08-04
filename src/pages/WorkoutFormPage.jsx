@@ -14,27 +14,12 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
     setFormError('');
     setIsSubmitting(true);
 
-    if (!authToken) {
-      setFormError("Not authenticated. Please log in.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!workoutName || !workoutDuration) {
-      setFormError("Workout name and duration cannot be empty.");
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      const url = `${API_BASE_URL}/workouts/addWorkout`;
-      console.log("👉 Sending request to:", url);
-
-      const response = await fetch(url, {
+      const res = await fetch(`${API_BASE_URL}/workouts/addWorkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           name: workoutName,
@@ -43,86 +28,51 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
         }),
       });
 
-      const responseText = await response.text();
-      console.log("👉 Raw API Response:", responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error("❌ Failed to parse API response as JSON:", responseText);
-        setFormError('An unexpected response was received from the API. Check console for details.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (response.ok) {
-        console.log("✅ Workout added successfully:", data);
+      const data = await res.json();
+      if (res.ok) {
         setWorkoutName('');
         setWorkoutDuration('');
         setWorkoutStatus('Completed');
-        onWorkoutAdded(); // Tell parent to refresh list
+        onWorkoutAdded();
       } else {
-        setFormError(data.message || `Failed to add workout: ${response.statusText}`);
+        setFormError(data.message || 'Failed to add workout');
       }
-    } catch (error) {
-      console.error("❌ Error adding workout:", error);
-      setFormError('Network error or API is unreachable for adding workout.');
+    } catch (err) {
+      setFormError('Network error while adding workout.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="form-page-container">
-      <h2 className="form-page-heading">Add New Workout</h2>
-      <form onSubmit={handleAddWorkout} className="form-layout">
-        <div className="form-field">
-          <label htmlFor="workoutName" className="form-label">Workout Name</label>
-          <input
-            type="text"
-            id="workoutName"
-            className="form-input"
-            placeholder="e.g., Morning Run"
-            value={workoutName}
-            onChange={(e) => setWorkoutName(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="workoutDuration" className="form-label">Duration (e.g., "30 mins")</label>
-          <input
-            type="text"
-            id="workoutDuration"
-            className="form-input"
-            placeholder="e.g., 45 mins, 1 hour"
-            value={workoutDuration}
-            onChange={(e) => setWorkoutDuration(e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="workoutStatus" className="form-label">Status</label>
-          <select
-            id="workoutStatus"
-            className="form-select"
-            value={workoutStatus}
-            onChange={(e) => setWorkoutStatus(e.target.value)}
-          >
-            <option>Completed</option>
-            <option>Pending</option>
-            <option>Cancelled</option>
-          </select>
-        </div>
-        {formError && (
-          <p className="form-error-message">{formError}</p>
-        )}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="submit-button"
+    <div>
+      <h2>Add Workout</h2>
+      <form onSubmit={handleAddWorkout}>
+        <input
+          type="text"
+          placeholder="Workout name"
+          value={workoutName}
+          onChange={(e) => setWorkoutName(e.target.value)}
+          required
+        />
+        <input
+          type="text"
+          placeholder="Duration"
+          value={workoutDuration}
+          onChange={(e) => setWorkoutDuration(e.target.value)}
+          required
+        />
+        <select
+          value={workoutStatus}
+          onChange={(e) => setWorkoutStatus(e.target.value)}
         >
-          {isSubmitting ? 'Adding Workout...' : 'Add Workout'}
+          <option>Completed</option>
+          <option>Pending</option>
+          <option>Cancelled</option>
+        </select>
+        {formError && <p>{formError}</p>}
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Adding...' : 'Add Workout'}
         </button>
       </form>
     </div>

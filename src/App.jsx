@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-
-// Import your page components
+import React, { useState, useEffect } from 'react';
 import WorkoutFormPage from './pages/WorkoutFormPage.jsx';
 import WorkoutListPage from './pages/WorkoutListPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 
-// ✅ Use the correct env variable
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const App = () => {
@@ -15,75 +12,46 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState('list');
   const [isLoadingWorkouts, setIsLoadingWorkouts] = useState(false);
   const [workoutError, setWorkoutError] = useState('');
+  const [editWorkout, setEditWorkout] = useState(null);
 
-  // Fetch workouts
-  const fetchWorkouts = useCallback(async () => {
-    if (!authToken || !userId) {
-      setWorkouts([]);
-      return;
-    }
-
+  // 🔹 Fetch workouts
+  const fetchWorkouts = async () => {
+    if (!authToken || !userId) return;
     setIsLoadingWorkouts(true);
     setWorkoutError('');
-
     try {
       const response = await fetch(`${API_BASE_URL}/workouts/getMyWorkouts`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
 
-      const text = await response.text();
-      console.log("👉 Raw Workouts Response:", text);
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (err) {
-        console.error("❌ Could not parse response as JSON", err);
-        setWorkoutError('Invalid response from server.');
-        setWorkouts([]);
-        return;
-      }
-
-      if (response.ok) {
-        const workoutsArray = Array.isArray(data) ? data : [];
-        console.log("✅ Parsed Workouts Array:", workoutsArray);
-
-        const sortedWorkouts = workoutsArray.sort((a, b) => {
-          const dateA = new Date(a.dateAdded || 0);
-          const dateB = new Date(b.dateAdded || 0);
-          return dateB - dateA; // Sort descending
-        });
-
-        setWorkouts(sortedWorkouts);
+      const data = await response.json();
+      if (response.ok && Array.isArray(data)) {
+        setWorkouts(
+          data.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded))
+        );
       } else {
-        setWorkoutError(data.message || `Failed to fetch workouts: ${response.statusText}`);
+        setWorkoutError(data.message || 'Failed to fetch workouts');
         setWorkouts([]);
       }
     } catch (err) {
-      console.error("❌ Error fetching workouts:", err);
-      setWorkoutError('Network error or API is unreachable for workouts.');
+      console.error('❌ Error fetching workouts:', err);
+      setWorkoutError('Network error or API unreachable.');
     } finally {
       setIsLoadingWorkouts(false);
     }
-  }, [authToken, userId]);
+  };
 
-  // Refetch workouts when auth changes
   useEffect(() => {
     fetchWorkouts();
-  }, [fetchWorkouts]);
+  }, [authToken, userId]);
 
-  // Handle login/register success
+  // 🔹 Auth success
   const handleAuthSuccess = (apiUserId, token) => {
     setUserId(apiUserId);
     setAuthToken(token);
     setCurrentPage('list');
   };
 
-  // Handle logout
   const handleLogout = () => {
     setUserId(null);
     setAuthToken(null);
@@ -91,33 +59,79 @@ const App = () => {
     setCurrentPage('login');
   };
 
-  // Refetch after adding workout
-  const handleWorkoutAdded = () => {
-    fetchWorkouts(); // Immediately reload workouts
-    setCurrentPage('list');
+  // 🔹 CRUD handlers
+  const handleWorkoutAdded = () => fetchWorkouts();
+
+  const handleDeleteWorkout = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/workouts/deleteWorkout/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) {
+        setWorkouts((prev) => prev.filter((w) => w.id !== id));
+      } else {
+        console.error('❌ Failed to delete workout');
+      }
+    } catch (err) {
+      console.error('❌ Delete error:', err);
+    }
   };
 
+  const handleCompleteWorkout = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/workouts/completeWorkoutStatus/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWorkouts((prev) =>
+          prev.map((w) => (w.id === id ? { ...w, status: 'Completed' } : w))
+        );
+      } else {
+        console.error('❌ Complete failed:', data);
+      }
+    } catch (err) {
+      console.error('❌ Complete error:', err);
+    }
+  };
+
+  const handleUpdateWorkout = async (updatedWorkout) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/workouts/updateWorkout/${updatedWorkout.id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedWorkout),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWorkouts((prev) =>
+          prev.map((w) => (w.id === updatedWorkout.id ? data.updatedWorkout : w))
+        );
+        setEditWorkout(null); // close modal
+      } else {
+        console.error('❌ Update failed:', data);
+      }
+    } catch (err) {
+      console.error('❌ Update error:', err);
+    }
+  };
+
+  // 🔹 Render LoginPage if unauthenticated
   if (!authToken || !userId) {
-    return (
-      <div className="app-container">
-        <LoginPage onAuthSuccess={handleAuthSuccess} />
-      </div>
-    );
+    return <LoginPage onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
     <div className="app-container">
       <div className="app-content-wrapper">
         <div className="user-info-bar">
-          <p className="user-id-text">
-            Your User ID: <span className="font-mono break-all">{userId || 'N/A'}</span>
-          </p>
-          <button
-            onClick={handleLogout}
-            className="logout-button"
-          >
-            Logout
-          </button>
+          <p>Your User ID: <span>{userId}</span></p>
+          <button onClick={handleLogout} className="logout-button">Logout</button>
         </div>
 
         <div className="navigation-tabs">
@@ -140,6 +154,9 @@ const App = () => {
             workouts={workouts}
             isLoading={isLoadingWorkouts}
             error={workoutError}
+            onDelete={handleDeleteWorkout}
+            onEdit={(w) => setEditWorkout(w)}
+            onCompleteStatus={handleCompleteWorkout}
           />
         )}
         {currentPage === 'add' && (
@@ -147,6 +164,42 @@ const App = () => {
             authToken={authToken}
             onWorkoutAdded={handleWorkoutAdded}
           />
+        )}
+
+        {/* Update Workout Modal */}
+        {editWorkout && (
+          <div className="modal-backdrop">
+            <div className="modal">
+              <h3>Edit Workout</h3>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleUpdateWorkout(editWorkout);
+                }}
+              >
+                <input
+                  type="text"
+                  value={editWorkout.name}
+                  onChange={(e) => setEditWorkout({ ...editWorkout, name: e.target.value })}
+                />
+                <input
+                  type="text"
+                  value={editWorkout.duration}
+                  onChange={(e) => setEditWorkout({ ...editWorkout, duration: e.target.value })}
+                />
+                <select
+                  value={editWorkout.status}
+                  onChange={(e) => setEditWorkout({ ...editWorkout, status: e.target.value })}
+                >
+                  <option>Completed</option>
+                  <option>Pending</option>
+                  <option>Cancelled</option>
+                </select>
+                <button type="submit">Save</button>
+                <button type="button" onClick={() => setEditWorkout(null)}>Cancel</button>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </div>
