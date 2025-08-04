@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 
-// ✅ Use the correct env variable name
-const API_BASE_URL = import.meta.env.VITE_API_URL; 
+// API Base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
   const [workoutName, setWorkoutName] = useState('');
   const [workoutDuration, setWorkoutDuration] = useState('');
-  const [workoutStatus, setWorkoutStatus] = useState('Completed'); 
+  const [workoutStatus, setWorkoutStatus] = useState('Completed');
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle adding a new workout
   const handleAddWorkout = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -36,11 +35,11 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`, 
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           name: workoutName,
-          duration: workoutDuration, 
+          duration: workoutDuration,
           status: workoutStatus,
         }),
       });
@@ -51,9 +50,9 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
       let data;
       try {
         data = JSON.parse(responseText);
-      } catch (e) {
+      } catch {
         console.error("❌ Failed to parse API response as JSON:", responseText);
-        setFormError('An unexpected response was received from the API. Check console for details.');
+        setFormError('Unexpected response from API.');
         setIsSubmitting(false);
         return;
       }
@@ -63,13 +62,13 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
         setWorkoutName('');
         setWorkoutDuration('');
         setWorkoutStatus('Completed');
-        onWorkoutAdded(); 
+        onWorkoutAdded(); // Refresh list
       } else {
         setFormError(data.message || `Failed to add workout: ${response.statusText}`);
       }
     } catch (error) {
       console.error("❌ Error adding workout:", error);
-      setFormError('Network error or API is unreachable for adding workout.');
+      setFormError('Network error or API is unreachable.');
     } finally {
       setIsSubmitting(false);
     }
@@ -92,12 +91,12 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
           />
         </div>
         <div className="form-field">
-          <label htmlFor="workoutDuration" className="form-label">Duration (e.g., "30 mins")</label>
+          <label htmlFor="workoutDuration" className="form-label">Duration</label>
           <input
             type="text"
             id="workoutDuration"
             className="form-input"
-            placeholder="e.g., 45 mins, 1 hour"
+            placeholder="e.g., 30 mins"
             value={workoutDuration}
             onChange={(e) => setWorkoutDuration(e.target.value)}
             required
@@ -116,14 +115,8 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
             <option>Cancelled</option>
           </select>
         </div>
-        {formError && (
-          <p className="form-error-message">{formError}</p>
-        )}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="submit-button"
-        >
+        {formError && <p className="form-error-message">{formError}</p>}
+        <button type="submit" disabled={isSubmitting} className="submit-button">
           {isSubmitting ? 'Adding Workout...' : 'Add Workout'}
         </button>
       </form>
