@@ -10,34 +10,34 @@ const App = () => {
   const [userId, setUserId] = useState(null);
   const [workouts, setWorkouts] = useState([]);
   const [currentPage, setCurrentPage] = useState('list');
-  const [isLoadingWorkouts, setIsLoadingWorkouts] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [workoutError, setWorkoutError] = useState('');
   const [editWorkout, setEditWorkout] = useState(null);
 
   // Fetch workouts
   const fetchWorkouts = async () => {
     if (!authToken || !userId) return;
-    setIsLoadingWorkouts(true);
+    setIsLoading(true);
     setWorkoutError('');
     try {
-      const response = await fetch(`${API_BASE_URL}/workouts/getMyWorkouts`, {
+      const res = await fetch(`${API_BASE_URL}/workouts/getMyWorkouts`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
-
-      const data = await response.json();
-      if (response.ok && Array.isArray(data)) {
+      const data = await res.json();
+      if (res.ok) {
         setWorkouts(
-          data.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded))
+          (Array.isArray(data) ? data : []).sort(
+            (a, b) => new Date(b.dateAdded) - new Date(a.dateAdded)
+          )
         );
       } else {
-        setWorkoutError(data.message || 'Failed to fetch workouts');
-        setWorkouts([]);
+        setWorkoutError(data.message || 'Failed to fetch workouts.');
       }
     } catch (err) {
-      console.error('❌ Error fetching workouts:', err);
-      setWorkoutError('Network error or API unreachable.');
+      console.error("Error fetching workouts:", err);
+      setWorkoutError('Network error.');
     } finally {
-      setIsLoadingWorkouts(false);
+      setIsLoading(false);
     }
   };
 
@@ -59,84 +59,66 @@ const App = () => {
     setCurrentPage('login');
   };
 
-  // CRUD handlers
-  const handleWorkoutAdded = () => fetchWorkouts();
-
-  const handleDeleteWorkout = async (id) => {
+  // Save updated workout
+  const handleSaveWorkout = async () => {
+    if (!editWorkout) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/workouts/deleteWorkout/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      if (res.ok) {
-        setWorkouts((prev) => prev.filter((w) => w.id !== id));
-      }
-    } catch (err) {
-      console.error('❌ Delete error:', err);
-    }
-  };
-
-  const handleCompleteWorkout = async (id) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/workouts/completeWorkoutStatus/${id}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      if (res.ok) {
-        setWorkouts((prev) =>
-          prev.map((w) => (w.id === id ? { ...w, status: 'Completed' } : w))
-        );
-      }
-    } catch (err) {
-      console.error('❌ Complete error:', err);
-    }
-  };
-
-  const handleUpdateWorkout = async (updatedWorkout) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/workouts/updateWorkout/${updatedWorkout.id}`, {
+      const res = await fetch(`${API_BASE_URL}/workouts/updateWorkout/${editWorkout.id}`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify(updatedWorkout),
+        body: JSON.stringify({
+          name: editWorkout.name,
+          duration: editWorkout.duration,
+          status: editWorkout.status,
+        }),
       });
+
       const data = await res.json();
+
       if (res.ok) {
         setWorkouts((prev) =>
-          prev.map((w) => (w.id === updatedWorkout.id ? data.updatedWorkout : w))
+          prev.map((w) =>
+            w.id === editWorkout.id ? { ...w, ...data.updatedWorkout } : w
+          )
         );
         setEditWorkout(null);
+      } else {
+        alert(data.message || 'Failed to update workout.');
       }
     } catch (err) {
-      console.error('❌ Update error:', err);
+      console.error('Error updating workout:', err);
+      alert('Error updating workout.');
     }
   };
 
   if (!authToken || !userId) {
-    return <LoginPage onAuthSuccess={handleAuthSuccess} />;
+    return (
+      <div className="app-container">
+        <LoginPage onAuthSuccess={handleAuthSuccess} />
+      </div>
+    );
   }
 
   return (
     <div className="app-container">
       <div className="app-content-wrapper">
         <div className="user-info-bar">
-          <p className="user-id-text">
-            Your User ID: <span className="font-mono break-all">{userId}</span>
-          </p>
+          <p>Your User ID: <span>{userId}</span></p>
           <button onClick={handleLogout} className="logout-button">Logout</button>
         </div>
 
         <div className="navigation-tabs">
           <button
-            className={`tab-button ${currentPage === 'list' ? 'tab-button-active' : ''}`}
+            className={`tab-button ${currentPage === 'list' ? 'active' : ''}`}
             onClick={() => setCurrentPage('list')}
           >
             View Workouts
           </button>
           <button
-            className={`tab-button ${currentPage === 'add' ? 'tab-button-active' : ''}`}
+            className={`tab-button ${currentPage === 'add' ? 'active' : ''}`}
             onClick={() => setCurrentPage('add')}
           >
             Add Workout
@@ -146,66 +128,39 @@ const App = () => {
         {currentPage === 'list' && (
           <WorkoutListPage
             workouts={workouts}
-            isLoading={isLoadingWorkouts}
+            isLoading={isLoading}
             error={workoutError}
-            onDelete={handleDeleteWorkout}
-            onEdit={(w) => setEditWorkout(w)}
-            onCompleteStatus={handleCompleteWorkout}
+            onEdit={setEditWorkout}
           />
         )}
         {currentPage === 'add' && (
-          <WorkoutFormPage
-            authToken={authToken}
-            onWorkoutAdded={handleWorkoutAdded}
-          />
+          <WorkoutFormPage authToken={authToken} onWorkoutAdded={fetchWorkouts} />
         )}
 
-        {/* Update Workout Modal */}
+        {/* Update Modal */}
         {editWorkout && (
-          <div className="modal-backdrop">
-            <div className="modal">
-              <h3 className="modal-heading">Edit Workout</h3>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleUpdateWorkout(editWorkout);
-                }}
-                className="form-layout"
+          <div className="modal">
+            <div className="modal-content">
+              <h3>Edit Workout</h3>
+              <input
+                type="text"
+                value={editWorkout.name}
+                onChange={(e) => setEditWorkout({ ...editWorkout, name: e.target.value })}
+              />
+              <input
+                type="text"
+                value={editWorkout.duration}
+                onChange={(e) => setEditWorkout({ ...editWorkout, duration: e.target.value })}
+              />
+              <select
+                value={editWorkout.status}
+                onChange={(e) => setEditWorkout({ ...editWorkout, status: e.target.value })}
               >
-                <div className="form-field">
-                  <label className="form-label">Workout Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editWorkout.name}
-                    onChange={(e) => setEditWorkout({ ...editWorkout, name: e.target.value })}
-                  />
-                </div>
-                <div className="form-field">
-                  <label className="form-label">Duration</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editWorkout.duration}
-                    onChange={(e) => setEditWorkout({ ...editWorkout, duration: e.target.value })}
-                  />
-                </div>
-                <div className="form-field">
-                  <label className="form-label">Status</label>
-                  <select
-                    className="form-select"
-                    value={editWorkout.status}
-                    onChange={(e) => setEditWorkout({ ...editWorkout, status: e.target.value })}
-                  >
-                    <option>Completed</option>
-                    <option>Pending</option>
-                  </select>
-                </div>
-                <div className="modal-actions">
-                  <button type="submit" className="submit-button">Save</button>
-                  <button type="button" className="cancel-button" onClick={() => setEditWorkout(null)}>Cancel</button>
-                </div>
-              </form>
+                <option>Completed</option>
+                <option>Pending</option>
+              </select>
+              <button onClick={handleSaveWorkout}>Save</button>
+              <button onClick={() => setEditWorkout(null)}>Cancel</button>
             </div>
           </div>
         )}
