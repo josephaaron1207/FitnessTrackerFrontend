@@ -5,8 +5,8 @@ import WorkoutFormPage from './pages/WorkoutFormPage.jsx';
 import WorkoutListPage from './pages/WorkoutListPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 
-// API Base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// ✅ Use the correct env variable
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const App = () => {
   const [authToken, setAuthToken] = useState(null);
@@ -16,7 +16,7 @@ const App = () => {
   const [isLoadingWorkouts, setIsLoadingWorkouts] = useState(false);
   const [workoutError, setWorkoutError] = useState('');
 
-  // reusable fetch function
+  // Fetch workouts
   const fetchWorkouts = useCallback(async () => {
     if (!authToken || !userId) {
       setWorkouts([]);
@@ -41,24 +41,21 @@ const App = () => {
       let data;
       try {
         data = JSON.parse(text);
-      } catch {
-        console.error("❌ Could not parse response as JSON");
-        data = [];
+      } catch (err) {
+        console.error("❌ Could not parse response as JSON", err);
+        setWorkoutError('Invalid response from server.');
+        setWorkouts([]);
+        return;
       }
 
       if (response.ok) {
-        console.log("👉 Parsed Workouts Data:", data);
-
-        const workoutsArray = Array.isArray(data)
-          ? data
-          : Array.isArray(data.workouts)
-            ? data.workouts
-            : [];
+        const workoutsArray = Array.isArray(data) ? data : [];
+        console.log("✅ Parsed Workouts Array:", workoutsArray);
 
         const sortedWorkouts = workoutsArray.sort((a, b) => {
           const dateA = new Date(a.dateAdded || 0);
           const dateB = new Date(b.dateAdded || 0);
-          return dateB.getTime() - dateA.getTime();
+          return dateB - dateA; // Sort descending
         });
 
         setWorkouts(sortedWorkouts);
@@ -74,19 +71,19 @@ const App = () => {
     }
   }, [authToken, userId]);
 
-  // fetch workouts on auth change
+  // Refetch workouts when auth changes
   useEffect(() => {
     fetchWorkouts();
   }, [fetchWorkouts]);
 
-  // login success handler
+  // Handle login/register success
   const handleAuthSuccess = (apiUserId, token) => {
     setUserId(apiUserId);
     setAuthToken(token);
     setCurrentPage('list');
   };
 
-  // logout handler
+  // Handle logout
   const handleLogout = () => {
     setUserId(null);
     setAuthToken(null);
@@ -94,13 +91,12 @@ const App = () => {
     setCurrentPage('login');
   };
 
-  // re-fetch workouts after adding
-  const handleWorkoutAdded = async () => {
-    await fetchWorkouts();
+  // Refetch after adding workout
+  const handleWorkoutAdded = () => {
+    fetchWorkouts(); // Immediately reload workouts
     setCurrentPage('list');
   };
 
-  // show login page
   if (!authToken || !userId) {
     return (
       <div className="app-container">
@@ -112,15 +108,18 @@ const App = () => {
   return (
     <div className="app-container">
       <div className="app-content-wrapper">
-        {/* User Info */}
         <div className="user-info-bar">
           <p className="user-id-text">
             Your User ID: <span className="font-mono break-all">{userId || 'N/A'}</span>
           </p>
-          <button onClick={handleLogout} className="logout-button">Logout</button>
+          <button
+            onClick={handleLogout}
+            className="logout-button"
+          >
+            Logout
+          </button>
         </div>
 
-        {/* Navigation Tabs */}
         <div className="navigation-tabs">
           <button
             className={`tab-button ${currentPage === 'list' ? 'tab-button-active' : ''}`}
@@ -136,7 +135,6 @@ const App = () => {
           </button>
         </div>
 
-        {/* Page Rendering */}
         {currentPage === 'list' && (
           <WorkoutListPage
             workouts={workouts}
