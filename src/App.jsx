@@ -5,8 +5,8 @@ import WorkoutFormPage from './pages/WorkoutFormPage.jsx';
 import WorkoutListPage from './pages/WorkoutListPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 
-// API Base URL for all operations - NOW POINTS TO THE PROXY
-const API_BASE_URL = '/api';
+// API Base URL for all operations - now uses a Vite environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // <--- UPDATED THIS LINE
 
 // Main App component
 const App = () => {
@@ -16,158 +16,79 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState('list'); // 'list' or 'add'
   const [isLoadingWorkouts, setIsLoadingWorkouts] = useState(false);
   const [workoutError, setWorkoutError] = useState('');
-  const [editingWorkout, setEditingWorkout] = useState(null); // State to hold workout being edited
 
-  // Effect to fetch workouts when authToken or userId changes, or when a workout is added/updated/deleted
-  const fetchWorkouts = async () => {
-    if (!authToken || !userId) {
-      setWorkouts([]); // Clear workouts if not authenticated
-      return;
-    }
-
-    setIsLoadingWorkouts(true);
-    setWorkoutError('');
-    try {
-      const response = await fetch(`${API_BASE_URL}/workouts/getMyWorkouts`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${authToken}`, // Send the JWT
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const responseData = await response.json(); // Get the full response data
-        let workoutsArray = [];
-
-        // Safely determine if responseData is an array or an object containing the array
-        if (Array.isArray(responseData)) {
-          workoutsArray = responseData;
-        } else if (responseData && Array.isArray(responseData.workouts)) {
-          workoutsArray = responseData.workouts;
-        } else if (responseData && Array.isArray(responseData.data)) {
-          workoutsArray = responseData.data;
-        } else {
-          console.warn("API response for workouts was not an array or expected object structure:", responseData);
-          setWorkoutError("Unexpected data format from API.");
-          setWorkouts([]);
-          return;
-        }
-
-        // Sort workouts by dateAdded in memory (assuming dateAdded is a string or Date object)
-        const sortedWorkouts = workoutsArray.sort((a, b) => {
-          const dateA = new Date(a.dateAdded || 0);
-          const dateB = new Date(b.dateAdded || 0);
-          return dateB.getTime() - dateA.getTime(); // Sort descending by dateAdded
-        });
-        setWorkouts(sortedWorkouts);
-      } else {
-        const errorData = await response.json();
-        setWorkoutError(errorData.message || `Failed to fetch workouts: ${response.statusText}`);
-        setWorkouts([]);
-      }
-    } catch (err) {
-      console.error("Error fetching workouts:", err);
-      setWorkoutError('Network error or API is unreachable for workouts.');
-      setWorkouts([]);
-    } finally {
-      setIsLoadingWorkouts(false);
-    }
-  };
-
+  // Effect to fetch workouts when authToken or userId changes
   useEffect(() => {
+    const fetchWorkouts = async () => {
+      if (!authToken || !userId) {
+        setWorkouts([]); // Clear workouts if not authenticated
+        return;
+      }
+
+      setIsLoadingWorkouts(true);
+      setWorkoutError('');
+      try {
+        const response = await fetch(`${API_BASE_URL}/workouts/getMyWorkouts`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`, // Send the JWT
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Assuming the API returns an array of workouts directly
+          const sortedWorkouts = data.sort((a, b) => {
+            const dateA = new Date(a.dateAdded || 0);
+            const dateB = new Date(b.dateAdded || 0);
+            return dateB.getTime() - dateA.getTime(); // Sort descending
+          });
+          setWorkouts(sortedWorkouts);
+        } else {
+          const errorData = await response.json();
+          setWorkoutError(errorData.message || `Failed to fetch workouts: ${response.statusText}`);
+          setWorkouts([]);
+        }
+      } catch (err) {
+        console.error("Error fetching workouts:", err);
+        setWorkoutError('Network error or API is unreachable for workouts.');
+      } finally {
+        setIsLoadingWorkouts(false);
+      }
+    };
+
     fetchWorkouts();
-  }, [authToken, userId, currentPage]); // Re-fetch when token, userId, or page changes (to ensure data refresh after add/update/delete)
+  }, [authToken, userId]); // Re-fetch when token or userId changes
 
   // Callback from LoginPage after successful login/registration
   const handleAuthSuccess = (apiUserId, token) => {
     setUserId(apiUserId); // Set the userId obtained from your API
     setAuthToken(token); // Store the JWT
     setCurrentPage('list'); // Redirect to workout list page
-    // fetchWorkouts will be called by useEffect due to authToken/userId change
   };
 
   const handleLogout = () => {
-    // For a REST API, logout often just means clearing client-side token
     setUserId(null); // Clear userId state
     setAuthToken(null); // Clear token
     setWorkouts([]); // Clear workouts
     setCurrentPage('login'); // Redirect to login page
-    // If your API has a logout endpoint that invalidates tokens on the server,
-    // you would add a fetch call here, e.g.:
-    // fetch(`${API_BASE_URL}/users/logout`, { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
+    // If your API requires a logout call, you would add a fetch here
+    // e.g., fetch(`${API_BASE_URL}/users/logout`, { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } });
   };
 
-  // Function to handle editing a workout (passed to WorkoutListPage)
-  const handleEditWorkout = (workout) => {
-    setEditingWorkout(workout);
-    setCurrentPage('add'); // Switch to the form page
+  // Function to re-fetch workouts after a new one is added
+  const handleWorkoutAdded = () => {
+    // Trigger re-fetch by changing a state that useEffect depends on, or directly call fetchWorkouts
+    // For simplicity, we'll just switch to list page and let useEffect handle re-fetch
+    setCurrentPage('list');
   };
-
-  // Function to handle form submission success (add or update)
-  const handleFormSubmitSuccess = () => {
-    setEditingWorkout(null); // Clear editing state
-    setCurrentPage('list'); // Go back to list page
-    // fetchWorkouts will be called by useEffect due to currentPage change
-  };
-
-  // Function to handle deleting a workout (passed to WorkoutListPage)
-  const handleDeleteWorkout = async (workoutId) => {
-    if (window.confirm("Are you sure you want to delete this workout?")) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/workouts/deleteWorkout/${workoutId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-        });
-
-        if (response.ok) {
-          console.log(`Workout ${workoutId} deleted successfully.`);
-          fetchWorkouts(); // Re-fetch workouts to update the list
-        } else {
-          const errorData = await response.json();
-          console.error(`Failed to delete workout ${workoutId}:`, errorData.message || response.statusText);
-          setWorkoutError(`Failed to delete workout: ${errorData.message || response.statusText}`);
-        }
-      } catch (error) {
-        console.error("Error deleting workout:", error);
-        setWorkoutError('Network error or API is unreachable for deleting workout.');
-      }
-    }
-  };
-
-  // Function to handle completing a workout status (passed to WorkoutListPage)
-  const handleCompleteWorkoutStatus = async (workoutId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/workouts/completeWorkoutStatus/${workoutId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-        // No request body needed as per API doc for this endpoint
-      });
-
-      if (response.ok) {
-        console.log(`Workout ${workoutId} status completed.`);
-        fetchWorkouts(); // Re-fetch workouts to update the list
-      } else {
-        const errorData = await response.json();
-        console.error(`Failed to complete workout status ${workoutId}:`, errorData.message || response.statusText);
-        setWorkoutError(`Failed to complete workout status: ${errorData.message || response.statusText}`);
-      }
-    } catch (error) {
-      console.error("Error completing workout status:", error);
-      setWorkoutError('Network error or API is unreachable for completing workout status.');
-    }
-  };
-
 
   // Render LoginPage if no user is authenticated
   if (!authToken || !userId) {
     return (
-      <div className="app-container">
+      <div className="app-container"> {/* Use a global class for consistent background */}
+        {/* Pass the handleAuthSuccess callback to LoginPage */}
         <LoginPage onAuthSuccess={handleAuthSuccess} />
       </div>
     );
@@ -175,12 +96,12 @@ const App = () => {
 
   // Render main app content if user is authenticated
   return (
-    <div className="app-container">
+    <div className="app-container"> {/* Use a global class for consistent background */}
       <div className="app-content-wrapper">
         {/* User ID Display and Logout Button */}
         <div className="user-info-bar">
           <p className="user-id-text">
-            Your User ID: <span className="user-id-value">{userId || 'N/A'}</span>
+            Your User ID: <span className="font-mono break-all">{userId || 'N/A'}</span>
           </p>
           <button
             onClick={handleLogout}
@@ -194,19 +115,13 @@ const App = () => {
         <div className="navigation-tabs">
           <button
             className={`tab-button ${currentPage === 'list' ? 'tab-button-active' : ''}`}
-            onClick={() => {
-              setCurrentPage('list');
-              setEditingWorkout(null); // Clear editing state when switching to list
-            }}
+            onClick={() => setCurrentPage('list')}
           >
             View Workouts
           </button>
           <button
             className={`tab-button ${currentPage === 'add' ? 'tab-button-active' : ''}`}
-            onClick={() => {
-              setCurrentPage('add');
-              setEditingWorkout(null); // Ensure no workout is being edited when clicking 'Add'
-            }}
+            onClick={() => setCurrentPage('add')}
           >
             Add Workout
           </button>
@@ -218,21 +133,12 @@ const App = () => {
             workouts={workouts}
             isLoading={isLoadingWorkouts}
             error={workoutError}
-            onEdit={handleEditWorkout} // Pass edit handler
-            onDelete={handleDeleteWorkout} // Pass delete handler
-            onCompleteStatus={handleCompleteWorkoutStatus} // Pass complete status handler
-            authToken={authToken} // Pass authToken for actions
           />
         )}
         {currentPage === 'add' && (
           <WorkoutFormPage
-            authToken={authToken}
-            onFormSubmitSuccess={handleFormSubmitSuccess} // Renamed callback
-            editingWorkout={editingWorkout} // Pass workout to edit
-            onCancelEdit={() => {
-              setEditingWorkout(null);
-              setCurrentPage('list');
-            }}
+            authToken={authToken} // Pass the token
+            onWorkoutAdded={handleWorkoutAdded}
           />
         )}
       </div>

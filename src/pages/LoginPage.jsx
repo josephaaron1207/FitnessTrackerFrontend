@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
-// API_BASE_URL now points to the proxy
-const API_BASE_URL = '/api';
+// API Base URL for all operations - now uses a Vite environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // <--- UPDATED THIS LINE
 
 const LoginPage = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState('');
@@ -10,7 +10,6 @@ const LoginPage = ({ onAuthSuccess }) => {
   const [loading, setLoading] = useState(false);
 
   // Helper function to decode JWT payload
-  // This is crucial for extracting the user ID from the token provided by your backend
   const decodeJwt = (token) => {
     try {
       const base64Url = token.split('.')[1];
@@ -56,10 +55,10 @@ const LoginPage = ({ onAuthSuccess }) => {
         let extractedUserId = null;
         let token = null;
 
-        if (data.access) { // Assuming your backend returns the JWT under a key like 'access'
+        if (data.access) { // Check if 'access' token is present
           token = data.access;
           const decodedToken = decodeJwt(token);
-          if (decodedToken && decodedToken.id) { // Assuming the user ID is within the decoded token payload under 'id'
+          if (decodedToken && decodedToken.id) { // Extract 'id' from the decoded token
             extractedUserId = decodedToken.id;
           }
         }
