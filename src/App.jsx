@@ -9,7 +9,7 @@ import LoginPage from './pages/LoginPage.jsx';
 const API_BASE_URL = '/api';
 
 // Main App component
-const App = () => { // Removed the extra '};' here
+const App = () => {
   const [authToken, setAuthToken] = useState(null); // Stores the JWT received from LoginPage
   const [userId, setUserId] = useState(null); // Stores the userId extracted from the JWT
   const [workouts, setWorkouts] = useState([]);
@@ -62,14 +62,7 @@ const App = () => { // Removed the extra '};' here
         });
         setWorkouts(sortedWorkouts);
       } else {
-        // Attempt to parse error response as JSON, but handle non-JSON responses gracefully
-        let errorData = {};
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          // If response is not JSON (e.g., HTML 404 page), use status text
-          errorData.message = response.statusText;
-        }
+        const errorData = await response.json();
         setWorkoutError(errorData.message || `Failed to fetch workouts: ${response.statusText}`);
         setWorkouts([]);
       }
@@ -133,12 +126,7 @@ const App = () => { // Removed the extra '};' here
           console.log(`Workout ${workoutId} deleted successfully.`);
           fetchWorkouts(); // Re-fetch workouts to update the list
         } else {
-          let errorData = {};
-          try {
-            errorData = await response.json();
-          } catch (e) {
-            errorData.message = response.statusText;
-          }
+          const errorData = await response.json();
           console.error(`Failed to delete workout ${workoutId}:`, errorData.message || response.statusText);
           setWorkoutError(`Failed to delete workout: ${errorData.message || response.statusText}`);
         }
@@ -165,12 +153,7 @@ const App = () => { // Removed the extra '};' here
         console.log(`Workout ${workoutId} status completed.`);
         fetchWorkouts(); // Re-fetch workouts to update the list
       } else {
-        let errorData = {};
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          errorData.message = response.statusText;
-        }
+        const errorData = await response.json();
         console.error(`Failed to complete workout status ${workoutId}:`, errorData.message || response.statusText);
         setWorkoutError(`Failed to complete workout status: ${errorData.message || response.statusText}`);
       }
@@ -179,6 +162,7 @@ const App = () => { // Removed the extra '};' here
       setWorkoutError('Network error or API is unreachable for completing workout status.');
     }
   };
+
 
   // Render LoginPage if no user is authenticated
   if (!authToken || !userId) {
