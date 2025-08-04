@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+// Removed: import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth'; // This line is for Firebase Auth, but your app uses custom API
 
 // API_BASE_URL now points to the proxy
-const API_BASE_URL = '/api';
+const API_BASE_URL = '/api'; // Assuming this is defined in your App.jsx or context
 
-const LoginPage = ({ onAuthSuccess }) => {
+const LoginPage = ({ onAuthSuccess }) => { // Removed 'auth' prop as it's for Firebase
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
