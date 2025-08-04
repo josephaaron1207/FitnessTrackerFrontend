@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 // API Base URL for all operations - now uses a Vite environment variable
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // <--- UPDATED THIS LINE
+const API_BASE_URL = import.meta.env.VITE_API_URL; // <--- UPDATED THIS LINE
 
 const LoginPage = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState('');
