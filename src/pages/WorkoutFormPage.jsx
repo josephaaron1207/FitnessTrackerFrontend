@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 
-// API Base URL for all operations - now uses a Vite environment variable
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // <--- UPDATED THIS LINE
+// ✅ Use the correct env variable name
+const API_BASE_URL = import.meta.env.VITE_API_URL; 
 
-const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => { // Accepts authToken
+const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => {
   const [workoutName, setWorkoutName] = useState('');
   const [workoutDuration, setWorkoutDuration] = useState('');
-  const [workoutStatus, setWorkoutStatus] = useState('Completed'); // Default status
+  const [workoutStatus, setWorkoutStatus] = useState('Completed'); 
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,42 +29,46 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => { // Accepts authToke
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/workouts/addWorkout`, {
+      const url = `${API_BASE_URL}/workouts/addWorkout`;
+      console.log("👉 Sending request to:", url);
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`, // Send the JWT
+          'Authorization': `Bearer ${authToken}`, 
         },
         body: JSON.stringify({
           name: workoutName,
-          duration: workoutDuration, // Send as string as per API sample "30 mins"
+          duration: workoutDuration, 
           status: workoutStatus,
-          // dateAdded will likely be handled by the backend
         }),
       });
 
       const responseText = await response.text();
+      console.log("👉 Raw API Response:", responseText);
+
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (e) {
-        console.error("Failed to parse API response as JSON:", responseText);
+        console.error("❌ Failed to parse API response as JSON:", responseText);
         setFormError('An unexpected response was received from the API. Check console for details.');
         setIsSubmitting(false);
         return;
       }
 
       if (response.ok) {
-        console.log("Workout added successfully:", data);
+        console.log("✅ Workout added successfully:", data);
         setWorkoutName('');
         setWorkoutDuration('');
         setWorkoutStatus('Completed');
-        onWorkoutAdded(); // Callback to notify parent (App.jsx)
+        onWorkoutAdded(); 
       } else {
         setFormError(data.message || `Failed to add workout: ${response.statusText}`);
       }
     } catch (error) {
-      console.error("Error adding workout:", error);
+      console.error("❌ Error adding workout:", error);
       setFormError('Network error or API is unreachable for adding workout.');
     } finally {
       setIsSubmitting(false);
@@ -72,7 +76,7 @@ const WorkoutFormPage = ({ authToken, onWorkoutAdded }) => { // Accepts authToke
   };
 
   return (
-    <div className="form-page-container"> {/* New class for consistent styling */}
+    <div className="form-page-container">
       <h2 className="form-page-heading">Add New Workout</h2>
       <form onSubmit={handleAddWorkout} className="form-layout">
         <div className="form-field">
