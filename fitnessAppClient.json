@@ -1,5 +1,5 @@
 {
-    "url": "",
+    "url": "https://fitness-tracker-frontend-rose.vercel.app/",
     "endpoints": {
         "register": "/register",
         "login": "/login",
